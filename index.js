@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 
+app.use(express.json())
+
 let phonebook = [
   { 
     "id": 1,
@@ -24,6 +26,18 @@ let phonebook = [
   }
 ]
 
+const generateId = () => {
+  const maxId = phonebook.length > 0
+  ? Math.max(...phonebook.map(person => person.id))
+  : 0
+
+  return maxId + 1;
+}
+
+const checkName = name => {
+  return phonebook.map(person => person.name).includes(name);
+}
+
 app.get('/', (request, response) => {
   response.send('<h1>Hello World!</h1>')
 })
@@ -42,6 +56,37 @@ app.delete('/api/persons/:id', (request, response) => {
   const id = Number(request.params.id)
   phonebook = phonebook.filter(person => person.id !== id)
   response.status(204).end()
+})
+
+app.post('/api/persons', (request, response) => {
+  const body = request.body;
+
+  if (!body.name) {
+    return response.status(400).json({ 
+      error: 'no name entered' 
+    })
+  }
+
+  if (!body.number) {
+    return response.status(400).json({ 
+      error: 'no number entered' 
+    })
+  }
+
+  if (checkName(body.name)) {
+    return response.status(400).json({ 
+      error: 'name is already in phonebook' 
+    })
+  }
+
+  const person = {
+    id: generateId(),
+    name: body.name,
+    number: body.number || false
+  }
+
+  phonebook = phonebook.concat(person);
+  response.json(person);
 })
 
 app.get('/info', (request, response) => {
