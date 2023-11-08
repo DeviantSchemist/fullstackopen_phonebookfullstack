@@ -1,7 +1,9 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const app = express()
 const cors = require('cors')
+const Person = require('./models/person')
 
 app.use(cors())
 app.use(express.json())
@@ -10,53 +12,21 @@ app.use(express.static('dist'))
 morgan.token('body', (request, response) => JSON.stringify(request.body))
 app.use(morgan(':method :url :status :response-time ms - :res[content-length] :body - :req[content-length]'))
 
-let phonebook = [
-  { 
-    "id": 1,
-    "name": "Arto Hellas", 
-    "number": "040-123456"
-  },
-  { 
-    "id": 2,
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523"
-  },
-  { 
-    "id": 3,
-    "name": "Dan Abramov", 
-    "number": "12-43-234345"
-  },
-  { 
-    "id": 4,
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122"
-  }
-]
-
-const generateId = () => {
-  const maxId = phonebook.length > 0
-  ? Math.max(...phonebook.map(person => person.id))
-  : 0
-
-  return maxId + 1;
-}
-
-const checkName = name => {
-  return phonebook.map(person => person.name).includes(name);
-}
 
 app.get('/', (request, response) => {
   response.send('<h1>Hello World!</h1>')
 })
 
 app.get('/api/persons', (request, response) => {
-  response.json(phonebook)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
-  const person = phonebook.find(person => person.id === id);
-  person ? response.json(person) : response.status(404).end();
+  Person.findById(request.params.id).then(person => {
+    response.json(person)
+  })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -80,27 +50,27 @@ app.post('/api/persons', (request, response) => {
     })
   }
 
-  if (checkName(body.name)) {
-    return response.status(400).json({ 
-      error: 'name is already in phonebook' 
-    })
-  }
+  // if (checkName(body.name)) {
+  //   return response.status(400).json({ 
+  //     error: 'name is already in phonebook' 
+  //   })
+  // }
 
-  const person = {
-    id: generateId(),
+  const person = new Person({
     name: body.name,
-    number: body.number || false
-  }
+    number: body.number
+  })
 
-  phonebook = phonebook.concat(person);
-  response.json(person);
+  person.save().then(savedPerson => {
+    response.json(savedPerson)
+  })
 })
 
 app.get('/info', (request, response) => {
   response.send(`<p>Phone has info for ${phonebook.length} people</p> <p>${new Date(Date.now())}</p>`)
 })
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
